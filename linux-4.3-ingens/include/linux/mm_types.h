@@ -48,6 +48,15 @@ typedef struct utilmap_node {
 	unsigned long addr;
 	struct page *page;
 } util_node_t;
+
+struct pf_pattern {
+    unsigned long last_addr;
+    unsigned long last_pf_time;
+    int spatial_locality_score; 
+    int temporal_locality_score;
+    unsigned long addr_deviation;
+    int pattern_type;      
+};
 #endif
 
 /*
@@ -401,7 +410,7 @@ struct osa_hpage_stats {
 	unsigned int idle_hpage_count;
 	unsigned long idle_bpage_count;
 	unsigned int idle_tau; //idle page penalty parameter
-	unsigned int weight;
+	unsigned int weight;	
 };
 #endif
 
@@ -530,6 +539,7 @@ struct mm_struct {
 	struct list_head osa_hpage_reclaim_link;
 	struct list_head osa_hpage_scan_link;
     struct radix_tree_root root_popl_map;
+	struct pf_pattern pf_track;
 #endif
 };
 

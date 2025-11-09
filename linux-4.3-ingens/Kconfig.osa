@@ -4,4 +4,8 @@ config OSA
 	tristate "Enable Ingens support."
 	default y
 
+config OSA_DEBUG
+	tristate "Enable Ingens debugging." 
+	default y
+
 endmenu
