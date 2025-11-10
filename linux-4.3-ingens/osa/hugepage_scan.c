@@ -1123,6 +1123,10 @@ static void osa_page_cache_scan(struct super_block *sb, void *unused)
 
 void osa_hpage_do_scan(void)
 {
+#ifdef CONFIG_OSA_DEBUG
+	printk(KERN_DEBUG "[OSA_DEBUG]: %s:%d\n", __func__, __LINE__);
+#endif
+	
 	struct mm_struct *mm;
 	struct task_struct *tsk;
 	struct osa_walker_stats walker_stats; 
