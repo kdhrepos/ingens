@@ -65,7 +65,7 @@ static unsigned long free_contig_pages_consumed;
 /* In a scanning of inactive list, this variable indicates
  * how many scanning can be passed for huge page */
 unsigned int deferred_mode = 1;
-unsigned int util_threshold = 90;
+// unsigned int util_threshold = 90
 struct list_head hugepage_worklist;
 static util_node_t *_util_node[512];
 
@@ -1124,14 +1124,14 @@ static void osa_page_cache_scan(struct super_block *sb, void *unused)
 void osa_hpage_do_scan(void)
 {
 #ifdef CONFIG_OSA_DEBUG
-	printk(KERN_DEBUG "[OSA_DEBUG]: %s:%d\n", __func__, __LINE__);
+	// printk(KERN_DEBUG "[OSA_DEBUG]: %s:%d\n", __func__, __LINE__);
 #endif
-	
+
 	struct mm_struct *mm;
 	struct task_struct *tsk;
 	struct osa_walker_stats walker_stats; 
 	int err, i;
-
+    
 	/* check the performance of this function */
 	drain_all_pages(NULL);
 
@@ -1202,7 +1202,41 @@ void osa_hpage_do_scan(void)
 					count[0], count[1], count[2], count[3], count[4]);
 			*/
 		}
+		
+		/* @kdh: access pattern tracking with strides */
+		struct fault_pattern_stats *stats = mm->stats;
+		long stride;
+		unsigned int consistent_count = 0;
+		unsigned int valid_samples = min(stats->buf_idx, FAULT_BUFFER_SIZE);
 
+		if (stats->buf_idx < 3) {
+			stride = stats->fault_addrs[1] - stats->fault_addrs[0];
+			for (unsigned int i = 2; i < valid_samples; i++) {
+				unsigned long curr_stride = stats->fault_addrs[i] - stats->fault_addrs[i-1];
+				
+				if (curr_stride == stride) {
+					consistent_count++;
+				}
+			}
+		
+			if ((consistent_count * 100 / (valid_samples - 2)) >= 80) {
+				mm->util_threshold += 10;
+				if (mm->util_threshold >= 90) {
+					mm->util_threshold = 90;
+				}
+			} else {
+				mm->util_threshold -= 10;
+				if (mm->util_threshold <= 50) {
+					mm->util_threshold = 50;
+				}
+			}
+		
+			/* @kdh: refresh fault stats */
+			memset(stats->fault_addrs, 0, sizeof(int) * FAULT_BUFFER_SIZE);
+			stats->buf_idx = 0;
+			stats->total_faults = 0;
+		}
+		
 		mmput(mm);
 		put_task_struct(tsk);
 	}
@@ -1649,29 +1683,30 @@ static struct kobj_attribute aggregation_sleep_millisecs_attr =
 	__ATTR(aggregation_sleep_millisecs, 0644, aggregation_sleep_millisecs_show, 
 			aggregation_sleep_millisecs_store);
 
-static ssize_t util_threshold_show(struct kobject *kobj,
-			    struct kobj_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%u\n", util_threshold);
-}
+// static ssize_t util_threshold_show(struct kobject *kobj,
+// 			    struct kobj_attribute *attr, char *buf)
+// {
+// 	return sprintf(buf, "%u\n", util_threshold);
+// }
 
-static ssize_t util_threshold_store(struct kobject *kobj,
-			     struct kobj_attribute *attr,
-			     const char *buf, size_t count)
-{
-	int value;
-	int err;
+// static ssize_t util_threshold_store(struct kobject *kobj,
+// 			     struct kobj_attribute *attr,
+// 			     const char *buf, size_t count)
+// {
+// 	int value;
+// 	int err;
 
-	err = kstrtoint(buf, 10, &value);
-	if (err || value > 100 || value < 0)
-		return -EINVAL;
+// 	err = kstrtoint(buf, 10, &value);
+// 	if (err || value > 100 || value < 0)
+// 		return -EINVAL;
 
-	util_threshold = value;
+// 	util_threshold = value;
 
-	return count;
-}
-static struct kobj_attribute util_threshold_attr =
-	__ATTR(util_threshold, 0644, util_threshold_show, util_threshold_store);
+// 	return count;
+// }
+
+// static struct kobj_attribute util_threshold_attr =
+// 	__ATTR(util_threshold, 0644, util_threshold_show, util_threshold_store);
 
 static ssize_t deferred_mode_show(struct kobject *kobj,
 			    struct kobj_attribute *attr, char *buf)
@@ -1751,7 +1786,7 @@ static struct kobj_attribute fairness_attr =
 static struct attribute *osa_hugepage_attr[] = {
 	&fairness_attr.attr,
 	&deferred_mode_attr.attr,
-	&util_threshold_attr.attr,
+	// &util_threshold_attr.attr,
 	&scan_sleep_millisecs_attr.attr,
 	&aggregation_sleep_millisecs_attr.attr,
 	&compact_sleep_millisecs_attr.attr,

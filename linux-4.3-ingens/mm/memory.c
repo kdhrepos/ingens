@@ -2859,7 +2859,8 @@ setpte:
 			bitmap_set(popl_node->popl_bitmap, pos, 1);
 
             weight = bitmap_weight(popl_node->popl_bitmap, 512);
-			_util_threshold = (util_threshold * 512) / 100;
+			// _util_threshold = (util_threshold * 512) / 100;
+			_util_threshold = (mm->util_threshold * 512) / 100;
             if (deferred_mode > 0 && 
 				weight >= _util_threshold && !popl_node->committed) {
 
@@ -3582,6 +3583,15 @@ static int __handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		    unsigned long address, unsigned int flags)
 {
+	/* @kdh: fault pattern tracking */
+	struct fault_pattern_stats *stats = &mm->fault_stats;
+
+	// spin_lock /* @kdh: not correct if we actually need lock */
+    stats->fault_addrs[stats->buf_idx] = address;
+    stats->buf_idx = (stats->buf_idx + 1) % FAULT_BUFFER_SIZE;
+	stats->total_faults++;
+	// spin_unlock
+
 	int ret;
 
 	__set_current_state(TASK_RUNNING);

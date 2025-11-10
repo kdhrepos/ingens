@@ -231,7 +231,7 @@ extern struct kobject *sysfs_hugepage_kobj;
 #ifdef CONFIG_OSA
 extern struct list_head osa_hpage_scan_list;
 extern unsigned int deferred_mode;
-extern unsigned int util_threshold;
+// extern unsigned int util_threshold;
 extern unsigned int hugepage_fairness;
 extern unsigned long distance_divisor;
 #endif

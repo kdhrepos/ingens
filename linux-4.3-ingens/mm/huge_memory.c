@@ -2761,8 +2761,11 @@ khugepaged_scan_pmd(struct mm_struct *mm,
 	if (deferred_mode > 0) {
 		popl_node_t *popl_node;
 		unsigned int weight = 0;
+		// unsigned int _util_threshold = 
+		// 	(util_threshold * 512) / 100;
+			
 		unsigned int _util_threshold = 
-			(util_threshold * 512) / 100;
+			(mm->util_threshold* 512) / 100;
 
         popl_node = osa_popl_node_lookup(mm, 
 				HPAGE_ALIGN_FLOOR(address));
@@ -3044,11 +3047,11 @@ breakouterloop_mmap_sem:
 				struct mm_slot *_mm_slot = NULL;
 				_mm_slot = osa_khugepaged_schedule_mm_slot(&khugepaged_scan.mm_head);
 				if (_mm_slot)
-					khugepaged_scan.mm_slot = _mm_slot;
+				khugepaged_scan.mm_slot = _mm_slot;
 				else {
 					khugepaged_scan.mm_slot = list_entry(
-							mm_slot->mm_node.next, struct mm_slot, mm_node);
-				}
+						mm_slot->mm_node.next, struct mm_slot, mm_node);
+					}
 				*/
 				mm_slot->address = 0;
 			} else {

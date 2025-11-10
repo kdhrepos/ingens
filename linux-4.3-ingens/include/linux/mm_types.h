@@ -49,13 +49,16 @@ typedef struct utilmap_node {
 	struct page *page;
 } util_node_t;
 
-struct pf_pattern {
-    unsigned long last_addr;
-    unsigned long last_pf_time;
-    int spatial_locality_score; 
-    int temporal_locality_score;
-    unsigned long addr_deviation;
-    int pattern_type;      
+#define FAULT_BUFFER_SIZE 1024
+
+struct fault_pattern_stats {
+    unsigned long fault_addrs[FAULT_BUFFER_SIZE];
+    unsigned int buf_idx;
+    unsigned int total_faults;
+
+    unsigned int stride_score;
+    unsigned int locality_score;
+    unsigned long pattern_updated_at;
 };
 #endif
 
@@ -539,7 +542,8 @@ struct mm_struct {
 	struct list_head osa_hpage_reclaim_link;
 	struct list_head osa_hpage_scan_link;
     struct radix_tree_root root_popl_map;
-	struct pf_pattern pf_track;
+	struct fault_pattern_stats stats;
+	unsigned int util_threshold;
 #endif
 };
 
