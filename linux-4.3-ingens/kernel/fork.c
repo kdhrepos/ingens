@@ -618,15 +618,15 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p)
     INIT_RADIX_TREE(&mm->root_popl_map, GFP_ATOMIC);
 
 	mm->hpage_stats.weight = 0;
-	
+
 	mm->util_threshold = 90; /* @kdh: init util_threshold */
 
 	/* @kdh: init fault_pattern_stats */
-	mm->fault_pattern_stats.buf_idx = 0;
-	mm->fault_pattern_stats.total_faults = 0;
-	mm->fault_pattern_stats.stride_score = 0;
-	mm->fault_pattern_stats.locality_score = 0;
-	mm->fault_pattern_stats.pattern_updated_at = 0;
+	mm->stats.buf_idx = 0;
+	mm->stats.total_faults = 0;
+	mm->stats.stride_score = 0;
+	mm->stats.locality_score = 0;
+	mm->stats.pattern_updated_at = 0;
 #endif 
 
 	if (current->mm) {
