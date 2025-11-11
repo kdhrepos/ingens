@@ -2922,163 +2922,316 @@ out:
 	return _mm_slot;
 }
 
+// static unsigned int 
+// //__attribute__((optimize("O0")))
+// khugepaged_scan_mm_slot(unsigned int pages, struct page **hpage)
+// 	__releases(&khugepaged_mm_lock)
+// 	__acquires(&khugepaged_mm_lock)
+// {
+// 	struct mm_slot *mm_slot = NULL;
+// 	struct mm_struct *mm;
+// 	struct vm_area_struct *vma;
+// 	int progress = 0;
+
+// 	VM_BUG_ON(!pages);
+// 	VM_BUG_ON(NR_CPUS != 1 && !spin_is_locked(&khugepaged_mm_lock));
+
+// #ifdef CONFIG_OSA
+// 	if (deferred_mode) {
+// 		struct mm_slot *_mm_slot = NULL;
+// 		_mm_slot = osa_khugepaged_schedule_mm_slot(&khugepaged_scan.mm_head);
+// 		if (_mm_slot) {
+// 			/*
+// 			rcu_read_lock();
+// 			if (_mm_slot->mm)
+// 				trace_printk("choosen %d address %lx\n", 
+// 						rcu_dereference(_mm_slot->mm->owner)->pid,
+// 						_mm_slot->address);
+// 			rcu_read_unlock();
+// 			*/
+
+// 			khugepaged_scan.mm_slot = _mm_slot;
+// 			khugepaged_scan.address = _mm_slot->address;
+// 		} 
+// 	} 
+// #endif
+
+// 	if (khugepaged_scan.mm_slot)
+// 		mm_slot = khugepaged_scan.mm_slot;
+// 	else {
+// 		/* FCFS scanning */
+// 		mm_slot = list_entry(khugepaged_scan.mm_head.next,
+// 				struct mm_slot, mm_node);
+
+// 		khugepaged_scan.mm_slot = mm_slot;
+// 		khugepaged_scan.address = 0;
+// 	}
+// 	spin_unlock(&khugepaged_mm_lock);
+
+// 	mm = mm_slot->mm;
+
+// 	down_read(&mm->mmap_sem);
+// 	if (unlikely(khugepaged_test_exit(mm)))
+// 		vma = NULL;
+// 	else
+// 		vma = find_vma(mm, khugepaged_scan.address);
+
+// 	progress++;
+// 	for (; vma; vma = vma->vm_next) {
+// 		unsigned long hstart, hend;
+
+// 		cond_resched();
+// 		if (unlikely(khugepaged_test_exit(mm))) {
+// 			progress++;
+// 			break;
+// 		}
+// 		if (!hugepage_vma_check(vma)) {
+// skip:
+// 			progress++;
+// 			continue;
+// 		}
+// 		hstart = (vma->vm_start + ~HPAGE_PMD_MASK) & HPAGE_PMD_MASK;
+// 		hend = vma->vm_end & HPAGE_PMD_MASK;
+// 		if (hstart >= hend)
+// 			goto skip;
+// 		if (khugepaged_scan.address > hend)
+// 			goto skip;
+// 		if (khugepaged_scan.address < hstart)
+// 			khugepaged_scan.address = hstart;
+// 		VM_BUG_ON(khugepaged_scan.address & ~HPAGE_PMD_MASK);
+
+// 		while (khugepaged_scan.address < hend) {
+// 			int ret;
+// 			cond_resched();
+// 			if (unlikely(khugepaged_test_exit(mm)))
+// 				goto breakouterloop;
+
+// 			VM_BUG_ON(khugepaged_scan.address < hstart ||
+// 				  khugepaged_scan.address + HPAGE_PMD_SIZE >
+// 				  hend);
+// 			ret = khugepaged_scan_pmd(mm, vma,
+// 						  khugepaged_scan.address,
+// 						  hpage);
+// 			/* move to next address */
+// 			khugepaged_scan.address += HPAGE_PMD_SIZE;
+// 			progress += HPAGE_PMD_NR;
+// 			if (ret)
+// 				/* we released mmap_sem so break loop */
+// 				goto breakouterloop_mmap_sem;
+// 			if (progress >= pages) {
+// 				goto breakouterloop;
+// 			}
+// 		}
+// 	}
+// breakouterloop:
+// 	up_read(&mm->mmap_sem); /* exit_mmap will destroy ptes after this */
+// breakouterloop_mmap_sem:
+
+// 	mm_slot->address = khugepaged_scan.address;
+// 	spin_lock(&khugepaged_mm_lock);
+// 	VM_BUG_ON(khugepaged_scan.mm_slot != mm_slot);
+// 	/*
+// 	 * Release the current mm_slot if this mm is about to die, or
+// 	 * if we scanned all vmas of this mm.
+// 	 */
+// 	if (khugepaged_test_exit(mm) || !vma) {
+// 		/*
+// 		 * Make sure that if mm_users is reaching zero while
+// 		 * khugepaged runs here, khugepaged_exit will find
+// 		 * mm_slot not pointing to the exiting mm.
+// 		 */
+// 		if (mm_slot->mm_node.next != &khugepaged_scan.mm_head) {
+// #ifdef CONFIG_OSA
+// 			if (deferred_mode) {
+// 				/*
+// 				struct mm_slot *_mm_slot = NULL;
+// 				_mm_slot = osa_khugepaged_schedule_mm_slot(&khugepaged_scan.mm_head);
+// 				if (_mm_slot)
+// 				khugepaged_scan.mm_slot = _mm_slot;
+// 				else {
+// 					khugepaged_scan.mm_slot = list_entry(
+// 						mm_slot->mm_node.next, struct mm_slot, mm_node);
+// 					}
+// 				*/
+// 				mm_slot->address = 0;
+// 			} else {
+// 				/* FCFS scanning */
+// 				khugepaged_scan.mm_slot = list_entry(
+// 						mm_slot->mm_node.next, struct mm_slot, mm_node);
+// 			}
+// #else
+// 			khugepaged_scan.mm_slot = list_entry(
+// 					mm_slot->mm_node.next, struct mm_slot, mm_node);
+// #endif
+// 			khugepaged_scan.address = 0;
+// 		} else {
+// 			if (deferred_mode)
+// 				mm_slot->address = 0;
+
+// 			khugepaged_scan.mm_slot = NULL;
+// 			khugepaged_full_scans++;
+// 		}
+
+// 		VM_BUG_ON_MM(!mm_slot, mm);
+
+// 		collect_mm_slot(mm_slot);
+// 	}
+
+// 	return progress;
+// }
+
 static unsigned int 
-//__attribute__((optimize("O0")))
 khugepaged_scan_mm_slot(unsigned int pages, struct page **hpage)
-	__releases(&khugepaged_mm_lock)
-	__acquires(&khugepaged_mm_lock)
+    __releases(&khugepaged_mm_lock)
+    __acquires(&khugepaged_mm_lock)
 {
-	struct mm_slot *mm_slot = NULL;
-	struct mm_struct *mm;
-	struct vm_area_struct *vma;
-	int progress = 0;
+    struct mm_slot *mm_slot = NULL;
+    struct mm_struct *mm;
+    struct vm_area_struct *vma;
+    int progress = 0;
 
-	VM_BUG_ON(!pages);
-	VM_BUG_ON(NR_CPUS != 1 && !spin_is_locked(&khugepaged_mm_lock));
+    VM_BUG_ON(!pages);
+    VM_BUG_ON(NR_CPUS != 1 && !spin_is_locked(&khugepaged_mm_lock));
 
 #ifdef CONFIG_OSA
-	if (deferred_mode) {
-		struct mm_slot *_mm_slot = NULL;
-		_mm_slot = osa_khugepaged_schedule_mm_slot(&khugepaged_scan.mm_head);
-		if (_mm_slot) {
-			/*
-			rcu_read_lock();
-			if (_mm_slot->mm)
-				trace_printk("choosen %d address %lx\n", 
-						rcu_dereference(_mm_slot->mm->owner)->pid,
-						_mm_slot->address);
-			rcu_read_unlock();
-			*/
-
-			khugepaged_scan.mm_slot = _mm_slot;
-			khugepaged_scan.address = _mm_slot->address;
-		} 
-	} 
+    if (deferred_mode) {
+        struct mm_slot *_mm_slot = NULL;
+        _mm_slot = osa_khugepaged_schedule_mm_slot(&khugepaged_scan.mm_head);
+        if (_mm_slot) {
+            khugepaged_scan.mm_slot = _mm_slot;
+            khugepaged_scan.address = _mm_slot->address;
+        } 
+    } 
 #endif
 
-	if (khugepaged_scan.mm_slot)
-		mm_slot = khugepaged_scan.mm_slot;
-	else {
-		/* FCFS scanning */
-		mm_slot = list_entry(khugepaged_scan.mm_head.next,
-				struct mm_slot, mm_node);
+    if (khugepaged_scan.mm_slot)
+        mm_slot = khugepaged_scan.mm_slot;
+    else {
+        mm_slot = list_entry(khugepaged_scan.mm_head.next,
+                struct mm_slot, mm_node);
+        khugepaged_scan.mm_slot = mm_slot;
+        khugepaged_scan.address = 0;
+    }
+    
+    /* [FIX #1] NULL 체크 추가 */
+    if (unlikely(!mm_slot)) {
+        spin_unlock(&khugepaged_mm_lock);
+        return progress;
+    }
+    
+    spin_unlock(&khugepaged_mm_lock);
 
-		khugepaged_scan.mm_slot = mm_slot;
-		khugepaged_scan.address = 0;
-	}
-	spin_unlock(&khugepaged_mm_lock);
+    mm = mm_slot->mm;
+    
+    /* [FIX #2] mm_struct 유효성 검증 */
+    if (unlikely(!mm)) {
+        spin_lock(&khugepaged_mm_lock);
+        return progress;
+    }
+    
+    /* [FIX #3] mm_users 참조 카운트 증가 (Use-After-Free 방지) */
+    if (!atomic_inc_not_zero(&mm->mm_users)) {
+        spin_lock(&khugepaged_mm_lock);
+        return progress;
+    }
 
-	mm = mm_slot->mm;
+    down_read(&mm->mmap_sem);
+    if (unlikely(khugepaged_test_exit(mm)))
+        vma = NULL;
+    else
+        vma = find_vma(mm, khugepaged_scan.address);
 
-	down_read(&mm->mmap_sem);
-	if (unlikely(khugepaged_test_exit(mm)))
-		vma = NULL;
-	else
-		vma = find_vma(mm, khugepaged_scan.address);
+    progress++;
+    for (; vma; vma = vma->vm_next) {
+        unsigned long hstart, hend;
 
-	progress++;
-	for (; vma; vma = vma->vm_next) {
-		unsigned long hstart, hend;
-
-		cond_resched();
-		if (unlikely(khugepaged_test_exit(mm))) {
-			progress++;
-			break;
-		}
-		if (!hugepage_vma_check(vma)) {
+        cond_resched();
+        if (unlikely(khugepaged_test_exit(mm))) {
+            progress++;
+            break;
+        }
+        if (!hugepage_vma_check(vma)) {
 skip:
-			progress++;
-			continue;
-		}
-		hstart = (vma->vm_start + ~HPAGE_PMD_MASK) & HPAGE_PMD_MASK;
-		hend = vma->vm_end & HPAGE_PMD_MASK;
-		if (hstart >= hend)
-			goto skip;
-		if (khugepaged_scan.address > hend)
-			goto skip;
-		if (khugepaged_scan.address < hstart)
-			khugepaged_scan.address = hstart;
-		VM_BUG_ON(khugepaged_scan.address & ~HPAGE_PMD_MASK);
+            progress++;
+            continue;
+        }
+        hstart = (vma->vm_start + ~HPAGE_PMD_MASK) & HPAGE_PMD_MASK;
+        hend = vma->vm_end & HPAGE_PMD_MASK;
+        if (hstart >= hend)
+            goto skip;
+        if (khugepaged_scan.address > hend)
+            goto skip;
+        if (khugepaged_scan.address < hstart)
+            khugepaged_scan.address = hstart;
+        VM_BUG_ON(khugepaged_scan.address & ~HPAGE_PMD_MASK);
 
-		while (khugepaged_scan.address < hend) {
-			int ret;
-			cond_resched();
-			if (unlikely(khugepaged_test_exit(mm)))
-				goto breakouterloop;
+        while (khugepaged_scan.address < hend) {
+            int ret;
+            cond_resched();
+            if (unlikely(khugepaged_test_exit(mm)))
+                goto breakouterloop;
 
-			VM_BUG_ON(khugepaged_scan.address < hstart ||
-				  khugepaged_scan.address + HPAGE_PMD_SIZE >
-				  hend);
-			ret = khugepaged_scan_pmd(mm, vma,
-						  khugepaged_scan.address,
-						  hpage);
-			/* move to next address */
-			khugepaged_scan.address += HPAGE_PMD_SIZE;
-			progress += HPAGE_PMD_NR;
-			if (ret)
-				/* we released mmap_sem so break loop */
-				goto breakouterloop_mmap_sem;
-			if (progress >= pages) {
-				goto breakouterloop;
-			}
-		}
-	}
+            VM_BUG_ON(khugepaged_scan.address < hstart ||
+                  khugepaged_scan.address + HPAGE_PMD_SIZE >
+                  hend);
+            ret = khugepaged_scan_pmd(mm, vma,
+                          khugepaged_scan.address,
+                          hpage);
+            /* move to next address */
+            khugepaged_scan.address += HPAGE_PMD_SIZE;
+            progress += HPAGE_PMD_NR;
+            if (ret)
+                goto breakouterloop_mmap_sem;
+            if (progress >= pages) {
+                goto breakouterloop;
+            }
+        }
+    }
 breakouterloop:
-	up_read(&mm->mmap_sem); /* exit_mmap will destroy ptes after this */
+    up_read(&mm->mmap_sem);
+
 breakouterloop_mmap_sem:
-
-	mm_slot->address = khugepaged_scan.address;
-	spin_lock(&khugepaged_mm_lock);
-	VM_BUG_ON(khugepaged_scan.mm_slot != mm_slot);
-	/*
-	 * Release the current mm_slot if this mm is about to die, or
-	 * if we scanned all vmas of this mm.
-	 */
-	if (khugepaged_test_exit(mm) || !vma) {
-		/*
-		 * Make sure that if mm_users is reaching zero while
-		 * khugepaged runs here, khugepaged_exit will find
-		 * mm_slot not pointing to the exiting mm.
-		 */
-		if (mm_slot->mm_node.next != &khugepaged_scan.mm_head) {
+    /* [FIX #4] mmap_sem 해제 후 mm 참조 유지 */
+    spin_lock(&khugepaged_mm_lock);
+    
+    /* [FIX #5] mm_slot 유효성 재확인 */
+    if (likely(khugepaged_scan.mm_slot == mm_slot)) {
+        mm_slot->address = khugepaged_scan.address;
+        
+        if (khugepaged_test_exit(mm) || !vma) {
+            if (mm_slot->mm_node.next != &khugepaged_scan.mm_head) {
 #ifdef CONFIG_OSA
-			if (deferred_mode) {
-				/*
-				struct mm_slot *_mm_slot = NULL;
-				_mm_slot = osa_khugepaged_schedule_mm_slot(&khugepaged_scan.mm_head);
-				if (_mm_slot)
-				khugepaged_scan.mm_slot = _mm_slot;
-				else {
-					khugepaged_scan.mm_slot = list_entry(
-						mm_slot->mm_node.next, struct mm_slot, mm_node);
-					}
-				*/
-				mm_slot->address = 0;
-			} else {
-				/* FCFS scanning */
-				khugepaged_scan.mm_slot = list_entry(
-						mm_slot->mm_node.next, struct mm_slot, mm_node);
-			}
+                if (deferred_mode) {
+                    mm_slot->address = 0;
+                } else {
+                    khugepaged_scan.mm_slot = list_entry(
+                            mm_slot->mm_node.next, struct mm_slot, mm_node);
+                }
 #else
-			khugepaged_scan.mm_slot = list_entry(
-					mm_slot->mm_node.next, struct mm_slot, mm_node);
+                khugepaged_scan.mm_slot = list_entry(
+                        mm_slot->mm_node.next, struct mm_slot, mm_node);
 #endif
-			khugepaged_scan.address = 0;
-		} else {
-			if (deferred_mode)
-				mm_slot->address = 0;
+                khugepaged_scan.address = 0;
+            } else {
+                if (deferred_mode)
+                    mm_slot->address = 0;
+                khugepaged_scan.mm_slot = NULL;
+                khugepaged_full_scans++;
+            }
 
-			khugepaged_scan.mm_slot = NULL;
-			khugepaged_full_scans++;
-		}
+            VM_BUG_ON_MM(!mm_slot, mm);
+            collect_mm_slot(mm_slot);
+        }
+    }
+    
+    spin_unlock(&khugepaged_mm_lock);
+    
+    /* [FIX #6] mm 참조 카운트 감소 */
+    mmput(mm);
 
-		VM_BUG_ON_MM(!mm_slot, mm);
-
-		collect_mm_slot(mm_slot);
-	}
-
-	return progress;
+    return progress;
 }
+
 
 static int khugepaged_has_deferred_work(void)
 {
