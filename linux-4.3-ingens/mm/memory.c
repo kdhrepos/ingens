@@ -3584,7 +3584,7 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		    unsigned long address, unsigned int flags)
 {
 	/* @kdh: fault pattern tracking */
-	struct fault_pattern_stats *stats = &mm->fault_stats;
+	struct fault_pattern_stats *stats = &mm->stats;
 
 	// spin_lock /* @kdh: not correct if we actually need lock */
     stats->fault_addrs[stats->buf_idx] = address;
