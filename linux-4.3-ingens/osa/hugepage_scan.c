@@ -1220,17 +1220,17 @@ void osa_hpage_do_scan(void)
 			}
 		
 			if ((consistent_count * 100 / (valid_samples - 2)) >= 80) {
-				mm->util_threshold += 10;
-				if (mm->util_threshold >= 90) {
-					mm->util_threshold = 90;
-				}
 			} else {
 				mm->util_threshold -= 10;
 				if (mm->util_threshold <= 50) {
 					mm->util_threshold = 50;
 				}
 			}
-		
+
+#ifdef OSA_DEBUG
+			printk("[OSA_DEBUG]: util threshold: %d\n", mm->util_threshold);
+#endif
+
 			/* @kdh: refresh fault stats */
 			memset(stats->fault_addrs, 0, sizeof(int) * FAULT_BUFFER_SIZE);
 			stats->buf_idx = 0;
