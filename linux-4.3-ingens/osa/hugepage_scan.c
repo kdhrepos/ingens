@@ -1204,7 +1204,7 @@ void osa_hpage_do_scan(void)
 		}
 		
 		/* @kdh: access pattern tracking with strides */
-		struct fault_pattern_stats *stats = mm->stats;
+		struct fault_pattern_stats *stats = &mm.stats;
 		long stride;
 		unsigned int consistent_count = 0;
 		unsigned int valid_samples = min(stats->buf_idx, FAULT_BUFFER_SIZE);
