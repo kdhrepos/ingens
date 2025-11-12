@@ -3595,6 +3595,7 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 
 	/* @kdh: access pattern tracking with strides */
 	if (stats->buf_idx == FAULT_BUFFER_SIZE) {
+		unsigned long *addrs = stats->fault_addrs;
 		long base_stride = addrs[1] - addrs[0];
 		int i, count = 0;
 
