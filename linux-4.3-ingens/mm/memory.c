@@ -3574,6 +3574,8 @@ static int __handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	return handle_pte_fault(mm, vma, address, pte, pmd, flags);
 }
 
+#define STRIDE_TOLERANCE 64
+
 /*
  * By the time we get here, we already hold the mm semaphore
  *
@@ -3586,35 +3588,28 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	/* @kdh: fault pattern tracking */
 	struct fault_pattern_stats *stats = &mm->stats;
 
-	mutex_lock(&stats->lock);
+	// mutex_lock(&stats->lock);
 	// spin_lock /* @kdh: not correct if we actually need lock */
     stats->fault_addrs[stats->buf_idx] = address;
     stats->buf_idx = (stats->buf_idx + 1) % FAULT_BUFFER_SIZE;
 
 	/* @kdh: access pattern tracking with strides */
-	long stride;
-	unsigned int consistent_count = 0;
-	int i;
-
 	if (stats->buf_idx == FAULT_BUFFER_SIZE) {
-		stride = stats->fault_addrs[1] - stats->fault_addrs[0];
-		for (i = 2; i < FAULT_BUFFER_SIZE; i++) {
-			unsigned long curr_stride = stats->fault_addrs[i] - stats->fault_addrs[i-1];
-			
-			if (curr_stride == stride) {
-				consistent_count++;
+		long base_stride = addrs[1] - addrs[0];
+		int i, count = 0;
+
+		for (i = 2; i < size; i++) {
+			long curr_stride = addrs[i] - addrs[i-1];
+			if (curr_stride >= base_stride - STRIDE_TOLERANCE && curr_stride <= base_stride + STRIDE_TOLERANCE) {
+				count++;
 			}
 		}
 	
 		/* @kdh: regualar pattern -> -10 */
-		if ((consistent_count * 100 / (FAULT_BUFFER_SIZE)) >= 50) {
+		if ((count * 100 / (FAULT_BUFFER_SIZE)) >= 50) {
 			mm->util_threshold -= 10;
 			if (mm->util_threshold <= 50) {
 				mm->util_threshold = 50;
-			}
-			mm->util_threshold += 10;
-			if (mm->util_threshold >= 90) {
-				mm->util_threshold = 90;
 			}
 		/* @kdh: irregualar pattern -> +10 */
 		} else {
@@ -3633,7 +3628,7 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		stats->buf_idx = 0;
 		stats->stride_score = 0;
 	}
-	mutex_unlock(&stats->lock);
+	// mutex_unlock(&stats->lock);
 
 	int ret;
 
