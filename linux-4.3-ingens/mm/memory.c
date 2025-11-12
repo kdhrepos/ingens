@@ -3599,7 +3599,7 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		long base_stride = addrs[1] - addrs[0];
 		int i, count = 0;
 
-		for (i = 2; i < size; i++) {
+		for (i = 2; i < FAULT_BUFFER_SIZE; i++) {
 			long curr_stride = addrs[i] - addrs[i-1];
 			if (curr_stride >= base_stride - STRIDE_TOLERANCE && curr_stride <= base_stride + STRIDE_TOLERANCE) {
 				count++;
@@ -3621,7 +3621,7 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		}
 
 #ifdef CONFIG_OSA_DEBUG
-		printk("[OSA_DEBUG]: util threshold: %d, buf idx: %d\n", mm->util_threshold, mm->buf_idx);
+		printk("[OSA_DEBUG]: util threshold: %d, buf idx: %d\n", mm->util_threshold, stats->buf_idx);
 #endif
 
 		/* @kdh: refresh fault stats */
