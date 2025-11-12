@@ -57,7 +57,7 @@ struct fault_pattern_stats {
 
     unsigned int stride_score;
 
-	spinlock_t lock;
+	struct mutex lock;
 };
 #endif
 

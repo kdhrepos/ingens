@@ -625,7 +625,7 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p)
 	mm->stats.buf_idx = 0;
 	mm->stats.stride_score = 0;
 
-	spin_lock_init(&mm->stats.lock);
+	mutex_init(&mm->stats.lock);
 #endif 
 
 	if (current->mm) {
