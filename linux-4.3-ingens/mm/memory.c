@@ -3586,11 +3586,54 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	/* @kdh: fault pattern tracking */
 	struct fault_pattern_stats *stats = &mm->stats;
 
+	mutex_lock(&stats->lock);
 	// spin_lock /* @kdh: not correct if we actually need lock */
     stats->fault_addrs[stats->buf_idx] = address;
     stats->buf_idx = (stats->buf_idx + 1) % FAULT_BUFFER_SIZE;
-	stats->total_faults++;
-	// spin_unlock
+
+	/* @kdh: access pattern tracking with strides */
+	struct fault_pattern_stats *stats = &mm->stats;
+	long stride;
+	unsigned int consistent_count = 0;
+
+	if (stats->buf_idx == FAULT_BUFFER_SIZE) {
+		stride = stats->fault_addrs[1] - stats->fault_addrs[0];
+		for (i = 2; i < valid_samples; i++) {
+			unsigned long curr_stride = stats->fault_addrs[i] - stats->fault_addrs[i-1];
+			
+			if (curr_stride == stride) {
+				consistent_count++;
+			}
+		}
+	
+		/* @kdh: regualar pattern -> -10 */
+		if ((consistent_count * 100 / (FAULT_BUFFER_SIZE)) >= 50) {
+			mm->util_threshold -= 10;
+			if (mm->util_threshold <= 50) {
+				mm->util_threshold = 50;
+			}
+			mm->util_threshold += 10;
+			if (mm->util_threshold >= 90) {
+				mm->util_threshold = 90;
+			}
+		/* @kdh: irregualar pattern -> +10 */
+		} else {
+			mm->util_threshold += 10;
+			if (mm->util_threshold >= 90) {
+				mm->util_threshold = 90;
+			}
+		}
+
+#ifdef OSA_DEBUG
+		printk("[OSA_DEBUG]: util threshold: %d, buf idx: %d\n", mm->util_threshold, mm->buf_idx);
+#endif
+
+		/* @kdh: refresh fault stats */
+		memset(stats->fault_addrs, 0, sizeof(unsigned long) * FAULT_BUFFER_SIZE);
+		stats->buf_idx = 0;
+		stats->stride_score = 0;
+	}
+	mutex_unlock(&stats->lock);
 
 	int ret;
 

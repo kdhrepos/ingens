@@ -623,10 +623,9 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p)
 
 	/* @kdh: init fault_pattern_stats */
 	mm->stats.buf_idx = 0;
-	mm->stats.total_faults = 0;
 	mm->stats.stride_score = 0;
-	mm->stats.locality_score = 0;
-	mm->stats.pattern_updated_at = 0;
+
+	spin_lock_init(&mm->stats.lock);
 #endif 
 
 	if (current->mm) {

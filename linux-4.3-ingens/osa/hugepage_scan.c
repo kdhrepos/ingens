@@ -1203,41 +1203,6 @@ void osa_hpage_do_scan(void)
 			*/
 		}
 		
-		/* @kdh: access pattern tracking with strides */
-		struct fault_pattern_stats *stats = &mm->stats;
-		long stride;
-		unsigned int consistent_count = 0;
-		unsigned int valid_samples = min(stats->buf_idx, FAULT_BUFFER_SIZE);
-
-		if (stats->buf_idx < 3) {
-
-			stride = stats->fault_addrs[1] - stats->fault_addrs[0];
-			for (i = 2; i < valid_samples; i++) {
-				unsigned long curr_stride = stats->fault_addrs[i] - stats->fault_addrs[i-1];
-				
-				if (curr_stride == stride) {
-					consistent_count++;
-				}
-			}
-		
-			if ((consistent_count * 100 / (valid_samples - 2)) >= 80) {
-			} else {
-				mm->util_threshold -= 10;
-				if (mm->util_threshold <= 50) {
-					mm->util_threshold = 50;
-				}
-			}
-
-#ifdef OSA_DEBUG
-			printk(KERN_DEBUG "[OSA_DEBUG]: util threshold: %d\n", mm->util_threshold);
-#endif
-
-			/* @kdh: refresh fault stats */
-			memset(stats->fault_addrs, 0, sizeof(int) * FAULT_BUFFER_SIZE);
-			stats->buf_idx = 0;
-			stats->total_faults = 0;
-		}
-		
 		mmput(mm);
 		put_task_struct(tsk);
 	}

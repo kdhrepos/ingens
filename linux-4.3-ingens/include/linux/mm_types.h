@@ -54,11 +54,10 @@ typedef struct utilmap_node {
 struct fault_pattern_stats {
     unsigned long fault_addrs[FAULT_BUFFER_SIZE];
     unsigned int buf_idx;
-    unsigned int total_faults;
 
     unsigned int stride_score;
-    unsigned int locality_score;
-    unsigned long pattern_updated_at;
+
+	spinlock_t lock;
 };
 #endif
 
