@@ -1210,6 +1210,7 @@ void osa_hpage_do_scan(void)
 		unsigned int valid_samples = min(stats->buf_idx, FAULT_BUFFER_SIZE);
 
 		if (stats->buf_idx < 3) {
+
 			stride = stats->fault_addrs[1] - stats->fault_addrs[0];
 			for (i = 2; i < valid_samples; i++) {
 				unsigned long curr_stride = stats->fault_addrs[i] - stats->fault_addrs[i-1];
@@ -1228,7 +1229,7 @@ void osa_hpage_do_scan(void)
 			}
 
 #ifdef OSA_DEBUG
-			printk("[OSA_DEBUG]: util threshold: %d\n", mm->util_threshold);
+			printk(KERN_DEBUG "[OSA_DEBUG]: util threshold: %d\n", mm->util_threshold);
 #endif
 
 			/* @kdh: refresh fault stats */
