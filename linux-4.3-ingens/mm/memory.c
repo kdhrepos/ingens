@@ -3620,9 +3620,7 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 			}
 		}
 
-#ifdef CONFIG_OSA_DEBUG
-		printk("[OSA_DEBUG]: util threshold: %d, buf idx: %d\n", mm->util_threshold, stats->buf_idx);
-#endif
+//		printk("[OSA_DEBUG]: util threshold: %d, buf idx: %d\n", mm->util_threshold, stats->buf_idx);
 
 		/* @kdh: refresh fault stats */
 		memset(stats->fault_addrs, 0, sizeof(unsigned long) * FAULT_BUFFER_SIZE);
