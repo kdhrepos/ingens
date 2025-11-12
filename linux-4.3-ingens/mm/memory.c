@@ -3592,13 +3592,13 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
     stats->buf_idx = (stats->buf_idx + 1) % FAULT_BUFFER_SIZE;
 
 	/* @kdh: access pattern tracking with strides */
-	struct fault_pattern_stats *stats = &mm->stats;
 	long stride;
 	unsigned int consistent_count = 0;
+	int i;
 
 	if (stats->buf_idx == FAULT_BUFFER_SIZE) {
 		stride = stats->fault_addrs[1] - stats->fault_addrs[0];
-		for (i = 2; i < valid_samples; i++) {
+		for (i = 2; i < FAULT_BUFFER_SIZE; i++) {
 			unsigned long curr_stride = stats->fault_addrs[i] - stats->fault_addrs[i-1];
 			
 			if (curr_stride == stride) {
