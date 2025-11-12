@@ -3591,7 +3591,7 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	// mutex_lock(&stats->lock);
 	// spin_lock /* @kdh: not correct if we actually need lock */
     stats->fault_addrs[stats->buf_idx] = address;
-    stats->buf_idx = (stats->buf_idx + 1) % FAULT_BUFFER_SIZE;
+    stats->buf_idx++;
 
 	/* @kdh: access pattern tracking with strides */
 	if (stats->buf_idx == FAULT_BUFFER_SIZE) {
