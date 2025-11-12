@@ -3624,7 +3624,7 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 			}
 		}
 
-#ifdef OSA_DEBUG
+#ifdef CONFIG_OSA_DEBUG
 		printk("[OSA_DEBUG]: util threshold: %d, buf idx: %d\n", mm->util_threshold, mm->buf_idx);
 #endif
 
